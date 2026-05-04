@@ -302,6 +302,65 @@ For standardized white-noise features with aspect ratio \(\gamma=p/n\), sample-c
 \end{itemize}
 \end{frame}
 
+\begin{frame}{PCA Eigenvalue Problem}
+\begin{block}{What PCA solves}
+For the standardized design matrix \(X\in\mathbb{R}^{n\times p}\),
+\[
+S=\frac{1}{n-1}X^\top X = V\Lambda V^\top,
+\qquad
+z_{ij}=x_i^\top v_j.
+\]
+PCA orders directions \(v_j\) by sample eigenvalues \(\lambda_j\).
+\end{block}
+\begin{itemize}
+\item In low dimensions, large sample variance is often a useful signal heuristic.
+\item In high dimensions, even pure noise has a spread-out sample spectrum.
+\item The question becomes: which PCA directions are outside what noise alone would produce?
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Marchenko--Pastur as a PCA Cutoff}
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.52\textwidth}
+\begin{block}{Noise reference}
+If standardized features were independent noise and \(p/n\to\gamma\), the noise eigenvalues concentrate in
+\[
+\lambda_{\pm}=(1\pm\sqrt{\gamma})^2.
+\]
+\end{block}
+\end{column}
+\begin{column}{0.44\textwidth}
+\begin{block}{Observed feature map}
+\begin{itemize}
+\item \(n=17{,}084\), \(p=594\).
+\item \(p/n=0.0348\).
+\item MP support: \([0.662,1.408]\).
+\item 60 eigenvalues exceed \(\lambda_+\).
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.15cm}
+\small Components above \(\lambda_+\) are treated as candidate structured directions; components inside the bulk are not automatically useless, only statistically compatible with noise under the reference model.
+\end{frame}
+
+\begin{frame}{Projection, Bias, and Variance}
+\[
+I_{\mathrm{out}}=\{j:\lambda_j>\lambda_+\},\qquad
+P_{\mathrm{out}}=V_{I_{\mathrm{out}}}V_{I_{\mathrm{out}}}^{\top},\qquad
+P_{\mathrm{bulk}}=I-P_{\mathrm{out}}.
+\]
+\[
+X_{\mathrm{out}}=XP_{\mathrm{out}},\qquad X_{\mathrm{bulk}}=XP_{\mathrm{bulk}}.
+\]
+\begin{itemize}
+\item Hard PCA/RMT filtering keeps \(X_{\mathrm{out}}\) and discards \(X_{\mathrm{bulk}}\).
+\item This can lower estimator variance by removing unstable directions.
+\item It can also add approximation bias if weak real signal lives inside the bulk.
+\item In this run, original XGBoost test ROC-AUC was \(0.9097\), while MP-outlier reconstruction was \(0.8957\) and PCA++ scores were \(0.8938\).
+\end{itemize}
+\end{frame}
+
 \begin{frame}{RMT Model Behavior: XGBoost}
 \centering
 \includegraphics[width=0.98\linewidth,height=0.76\paperheight,keepaspectratio]{presentation_rmt_xgboost.png}

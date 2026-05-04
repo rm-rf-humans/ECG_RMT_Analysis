@@ -60,6 +60,12 @@ def _save(fig: plt.Figure, name: str) -> None:
     plt.close(fig)
 
 
+def _save_presentation(fig: plt.Figure, name: str) -> None:
+    PRESENTATION_FIGURES.mkdir(parents=True, exist_ok=True)
+    fig.savefig(PRESENTATION_FIGURES / name, bbox_inches="tight")
+    plt.close(fig)
+
+
 def _family(column: str) -> str:
     if column.startswith("corr_"):
         return "cross-lead correlation"
@@ -404,6 +410,124 @@ def filtering_experiment() -> None:
     _save(fig, "paper_rmt_filtering_experiment.png")
 
 
+def presentation_evaluation_figures() -> None:
+    metrics = pd.read_csv(_require(METRICS / "model_metrics.csv"))
+    params = json.loads(_require(METRICS / "model_params.json").read_text())
+    summary = json.loads(_require(METRICS / "data_summary.json").read_text())
+    test = metrics[metrics["split"] == "test"].copy()
+    test = test.sort_values("roc_auc", ascending=True)
+
+    fig, axes = plt.subplots(1, 3, figsize=(11.0, 3.1), gridspec_kw={"width_ratios": [1.4, 1.15, 1.15]})
+    labels = test["model"].str.replace("_", " ", regex=False)
+    y = np.arange(len(test))
+    for column, color, marker, name in [
+        ("roc_auc", COLORS["blue"], "o", "ROC-AUC"),
+        ("f1", COLORS["red"], "s", "F1"),
+        ("balanced_accuracy", COLORS["green"], "^", "balanced acc."),
+    ]:
+        axes[0].scatter(test[column], y, color=color, marker=marker, s=34, label=name)
+    axes[0].set_yticks(y)
+    axes[0].set_yticklabels(labels)
+    axes[0].set_xlim(0.70, 0.93)
+    axes[0].set_xlabel("held-out test score")
+    axes[0].set_title("Model comparison")
+    axes[0].legend(frameon=False, loc="lower right")
+
+    x = np.arange(len(test))
+    auc_values = test["roc_auc"].to_numpy()
+    f1_values = test["f1"].to_numpy()
+    axes[1].bar(x - 0.18, auc_values, width=0.36, color=COLORS["blue"], label="ROC-AUC")
+    axes[1].bar(x + 0.18, f1_values, width=0.36, color=COLORS["red"], alpha=0.82, label="F1")
+    axes[1].set_xticks(x)
+    axes[1].set_xticklabels(labels, rotation=35, ha="right")
+    axes[1].set_ylim(0.70, 0.93)
+    axes[1].set_title("AUC and F1 trade-off")
+    axes[1].legend(frameon=False)
+
+    best_by_auc = test.loc[test["roc_auc"].idxmax()]
+    best_by_f1 = test.loc[test["f1"].idxmax()]
+    values = pd.Series(
+        {
+            "best ROC-AUC": best_by_auc["roc_auc"],
+            "best F1": best_by_f1["f1"],
+            "best balanced acc.": test["balanced_accuracy"].max(),
+            "best precision": test["precision"].max(),
+            "best recall": test["recall"].max(),
+        }
+    )
+    bars = axes[2].barh(values.index, values.values, color=[COLORS["blue"], COLORS["red"], COLORS["green"], COLORS["gold"], COLORS["gray"]])
+    axes[2].set_xlim(0.70, 0.93)
+    axes[2].set_title("Selection view")
+    axes[2].set_xlabel("score")
+    for bar in bars:
+        axes[2].text(bar.get_width() + 0.004, bar.get_y() + bar.get_height() / 2, f"{bar.get_width():.3f}", va="center", fontsize=8)
+    fig.tight_layout()
+    _save_presentation(fig, "presentation_model_score_comparison.png")
+
+    fig, axes = plt.subplots(2, 3, figsize=(10.2, 5.4), sharex=False, sharey=True)
+    axes = axes.ravel()
+    model_order = metrics[metrics["split"] == "test"].sort_values("roc_auc", ascending=False)["model"].tolist()
+    for ax, model in zip(axes, model_order):
+        trials = [trial for trial in params[model].get("trials", []) if trial.get("value") is not None]
+        values = np.array([float(trial["value"]) for trial in trials], dtype=float)
+        trial_numbers = np.arange(1, len(values) + 1)
+        running_best = np.maximum.accumulate(values)
+        ax.plot(trial_numbers, values, marker="o", color=COLORS["gray"], label="trial")
+        ax.plot(trial_numbers, running_best, marker="s", color=COLORS["red"], label="best so far")
+        ax.axhline(float(params[model]["best_cv_roc_auc"]), color=COLORS["blue"], linestyle="--", linewidth=0.9)
+        ax.set_title(model.replace("_", " "))
+        ax.set_xlabel("Optuna trial")
+        ax.set_ylim(0.68, 0.94)
+        ax.grid(axis="y", alpha=0.18)
+        ax.text(
+            0.02,
+            0.08,
+            f"best CV AUC={float(params[model]['best_cv_roc_auc']):.3f}",
+            transform=ax.transAxes,
+            fontsize=8,
+            bbox={"facecolor": "white", "alpha": 0.85, "edgecolor": COLORS["light"], "pad": 2},
+        )
+    axes[0].set_ylabel("CV ROC-AUC")
+    axes[3].set_ylabel("CV ROC-AUC")
+    axes[0].legend(frameon=False, loc="lower right")
+    fig.suptitle("Systematic Hyperparameter Tuning", y=0.995, fontsize=12)
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    _save_presentation(fig, "presentation_tuning_traces.png")
+
+    pos = int(summary["split_counts"]["test"]["diagnostic_abnormality"])
+    neg = int(summary["split_counts"]["test"]["normal"])
+    top = metrics[metrics["split"] == "test"].sort_values("roc_auc", ascending=False)
+    fig, axes = plt.subplots(2, 3, figsize=(9.7, 5.4))
+    axes = axes.ravel()
+    for ax, (_, row) in zip(axes, top.iterrows()):
+        tp = int(round(float(row["recall"]) * pos))
+        fn = pos - tp
+        fp = int(round(tp * (1.0 / float(row["precision"]) - 1.0)))
+        tn = neg - fp
+        matrix = np.array([[tn, fp], [fn, tp]], dtype=int)
+        ax.imshow(matrix, cmap="Blues")
+        for i in range(2):
+            for j in range(2):
+                color = "white" if matrix[i, j] > matrix.max() * 0.55 else "black"
+                ax.text(j, i, f"{matrix[i, j]}", ha="center", va="center", color=color, fontsize=11, fontweight="bold")
+        ax.set_xticks([0, 1])
+        ax.set_xticklabels(["normal", "abnormal"], rotation=25, ha="right")
+        ax.set_yticks([0, 1])
+        ax.set_yticklabels(["normal", "abnormal"])
+        ax.set_title(f"{row['model'].replace('_', ' ')}\nAUC={row['roc_auc']:.3f}, F1={row['f1']:.3f}", fontsize=9)
+        ax.set_xlabel("predicted")
+        ax.set_ylabel("true")
+    fig.suptitle("Held-Out Test Confusion Matrices", y=0.995, fontsize=12)
+    fig.text(
+        0.01,
+        0.01,
+        "Counts are reconstructed from the reported test precision/recall and official test split class counts: normal=912, abnormal=1,246.",
+        fontsize=7,
+    )
+    fig.tight_layout(rect=(0, 0.03, 1, 0.95))
+    _save_presentation(fig, "presentation_confusion_matrices.png")
+
+
 def main() -> None:
     _setup()
     preprocessing_findings()
@@ -411,6 +535,7 @@ def main() -> None:
     model_summary()
     model_mp_facets()
     filtering_experiment()
+    presentation_evaluation_figures()
 
 
 if __name__ == "__main__":

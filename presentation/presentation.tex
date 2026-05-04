@@ -10,6 +10,9 @@
 
 \definecolor{ecgred}{HTML}{A33B2E}
 \definecolor{ecgteal}{HTML}{2F6F73}
+\definecolor{ecggold}{HTML}{C99A19}
+\definecolor{ecgblue}{HTML}{3B5B8A}
+
 \setbeamercolor{palette primary}{bg=ecgred,fg=white}
 \setbeamercolor{palette secondary}{bg=ecgred,fg=white}
 \setbeamercolor{palette tertiary}{bg=ecgred,fg=white}
@@ -17,17 +20,19 @@
 \setbeamercolor{structure}{fg=ecgred}
 \setbeamercolor{block title}{bg=ecgred,fg=white}
 \setbeamercolor{block body}{bg=black!5,fg=black}
+\setbeamertemplate{itemize item}{\color{ecgred}$\blacktriangleright$}
+\setbeamertemplate{itemize subitem}{\color{ecgteal}$\circ$}
 
 \setbeamertemplate{footline}{
   \leavevmode
   \hbox{
-  \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.6ex,dp=1ex,center]{palette quaternary}ECG RMT Analysis\end{beamercolorbox}
-  \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.6ex,dp=1ex,center]{palette quaternary}PTB-XL\end{beamercolorbox}
+  \begin{beamercolorbox}[wd=.34\paperwidth,ht=2.6ex,dp=1ex,center]{palette quaternary}ECG RMT Analysis\end{beamercolorbox}
+  \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.6ex,dp=1ex,center]{palette quaternary}PTB-XL Applied ML\end{beamercolorbox}
   \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.6ex,dp=1ex,center]{palette quaternary}\insertframenumber{} / \inserttotalframenumber\end{beamercolorbox}}
 }
 
 \title{High-Dimensional Arrhythmia Classification from Raw ECG Time Series}
-\subtitle{PTB-XL preprocessing, model selection, spectral analysis, and RMT diagnostics}
+\subtitle{Data understanding, preprocessing, model tuning, evaluation, and RMT diagnostics}
 \author{ECG RMT Analysis}
 \date{May 2026}
 
@@ -37,32 +42,65 @@
 \titlepage
 \end{frame}
 
-\begin{frame}{Project Goal}
-\begin{block}{Task}
-Build a complete applied-ML pipeline for binary ECG screening from PTB-XL raw waveform records, then analyze fitted model behavior in the high-dimensional feature regime.
+\begin{frame}{Rubric-Aligned Roadmap}
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.24\textwidth}
+\begin{block}{EDA and data}
+\centering 15\%\\
+\small class balance, missingness, label mapping, feature families
+\end{block}
+\end{column}
+\begin{column}{0.24\textwidth}
+\begin{block}{Preprocessing}
+\centering 20\%\\
+\small imputation, encoding, scaling, leakage control, engineered ECG features
+\end{block}
+\end{column}
+\begin{column}{0.24\textwidth}
+\begin{block}{Models and tuning}
+\centering 25\%\\
+\small six model families, Optuna search, official PTB-XL folds
+\end{block}
+\end{column}
+\begin{column}{0.24\textwidth}
+\begin{block}{Evaluation}
+\centering 15\%\\
+\small metrics, comparisons, confusion matrices, RMT stress tests
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.25cm}
+\begin{block}{Project extension}
+Random Matrix Theory is used to analyze high-dimensional feature geometry and model behavior; it is not presented as a separate classifier.
+\end{block}
+\end{frame}
+
+\begin{frame}{Task Definition}
+\begin{block}{Goal}
+Build a reproducible binary ECG screening pipeline from PTB-XL raw WFDB waveforms and metadata, then explain how fitted models behave in the high-dimensional feature regime.
 \end{block}
 \begin{itemize}
-\item Input: ten-second, twelve-lead ECG waveform plus metadata.
+\item Input: ten-second, twelve-lead ECG waveform records plus patient and acquisition metadata.
 \item Target: normal versus diagnostic abnormality from SCP diagnostic superclasses.
-\item Evaluation: official PTB-XL folds.
-\item RMT role: diagnostic layer, not a classifier.
+\item Data split: official PTB-XL folds; train, validation, and held-out test are kept separate.
+\item Output: trained model comparison, final metrics, paper, presentation, and MLflow logs.
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Dataset and Labels}
+\begin{frame}{EDA: Dataset and Label Construction}
 \begin{columns}[T,totalwidth=\textwidth]
-\begin{column}{0.48\textwidth}
-\begin{block}{PTB-XL}
+\begin{column}{0.47\textwidth}
+\begin{block}{PTB-XL inputs}
 \begin{itemize}
 \item 21,799 metadata rows.
-\item WFDB waveform files.
-\item 100 Hz and 500 Hz records.
-\item SCP-ECG statement dictionaries.
+\item WFDB records at 100 Hz and 500 Hz.
+\item Twelve simultaneous ECG leads.
+\item SCP-ECG code dictionary for diagnostic mapping.
 \end{itemize}
 \end{block}
 \end{column}
-\begin{column}{0.48\textwidth}
-\begin{block}{Supervised table}
+\begin{column}{0.49\textwidth}
+\begin{block}{Constructed supervised table}
 \begin{center}
 \begin{tabular}{lr}
 \toprule
@@ -71,90 +109,188 @@ Quantity & Count \\
 Labeled records & 21,388 \\
 Normal & 9,069 \\
 Diagnostic abnormality & 12,319 \\
+Unlabeled or unmapped & 411 \\
 \bottomrule
 \end{tabular}
 \end{center}
 \end{block}
 \end{column}
 \end{columns}
+\vspace{0.15cm}
+\small The binary target is a screening abstraction: a record is positive if at least one mapped diagnostic superclass is not \texttt{NORM}.
 \end{frame}
 
-\begin{frame}{Pipeline}
-\begin{center}
-\resizebox{\linewidth}{!}{%
-\begin{tikzpicture}[
-  node distance=0.25cm,
-  box/.style={draw=ecgred, rounded corners, thick, align=center, minimum height=0.8cm, text width=2.2cm, fill=black!4},
-  arr/.style={-{Latex[length=2mm]}, thick, ecgred}
-]
-\node[box] (wfdb) {WFDB\\decoding};
-\node[box, right=of wfdb] (labels) {SCP label\\mapping};
-\node[box, right=of labels] (features) {time, spectral,\\correlation features};
-\node[box, right=of features] (prep) {train-only\\preprocessing};
-\node[box, right=of prep] (models) {model\\selection};
-\node[box, right=of models] (rmt) {RMT\\diagnostics};
-\draw[arr] (wfdb) -- (labels);
-\draw[arr] (labels) -- (features);
-\draw[arr] (features) -- (prep);
-\draw[arr] (prep) -- (models);
-\draw[arr] (models) -- (rmt);
-\end{tikzpicture}
-}
-\end{center}
-\begin{block}{Reproducibility point}
-Preprocessing statistics are fit only on training folds; validation and test folds are never used for imputation or scaling.
-\end{block}
-\end{frame}
-
-\begin{frame}{Feature Map}
-\[
-z_i=\phi(r_i,q_i)\in\mathbb{R}^{523},
-\qquad
-x_i=g(z_i)\in\mathbb{R}^{594}.
-\]
-\begin{columns}[T,totalwidth=\textwidth]
-\begin{column}{0.32\textwidth}
-\begin{block}{Time-domain}
-moments, quantiles, RMS, energy, derivatives, zero crossings
-\end{block}
-\end{column}
-\begin{column}{0.32\textwidth}
-\begin{block}{Frequency-domain}
-FFT power, centroid, entropy, dominant frequency, roll-off, band powers
-\end{block}
-\end{column}
-\begin{column}{0.32\textwidth}
-\begin{block}{Metadata and leads}
-age, sex, height, weight, site, device, and pairwise lead correlations
-\end{block}
-\end{column}
-\end{columns}
-\end{frame}
-
-\begin{frame}{Preprocessing Findings}
+\begin{frame}{EDA: What We Found Before Modeling}
 \centering
 \includegraphics[height=0.76\paperheight,keepaspectratio]{paper_preprocessing_findings.png}
 \end{frame}
 
-\begin{frame}{Model Families}
+\begin{frame}{EDA: Key Data Characteristics}
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.48\textwidth}
+\begin{block}{Class and fold structure}
+\begin{itemize}
+\item Train: 17,084 records.
+\item Validation: 2,146 records.
+\item Test: 2,158 records.
+\item Abnormal class prevalence is near 58\% in each split.
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{Quality observations}
+\begin{itemize}
+\item Height and weight are highly incomplete, so median imputation is required.
+\item Waveform-derived features are almost complete after decoding.
+\item Age differs between target groups, so demographics are retained but regularized.
+\item Cross-lead correlations show strong univariate association with the target.
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Preprocessing Pipeline}
+\begin{center}
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+  node distance=0.25cm,
+  box/.style={draw=ecgred, rounded corners, thick, align=center, minimum height=0.85cm, text width=2.05cm, fill=black!4},
+  arr/.style={-{Latex[length=2mm]}, thick, ecgred}
+]
+\node[box] (wfdb) {WFDB\\decoding};
+\node[box, right=of wfdb] (labels) {SCP code\\mapping};
+\node[box, right=of labels] (features) {ECG feature\\extraction};
+\node[box, right=of features] (split) {official fold\\split};
+\node[box, right=of split] (prep) {train-only\\preprocessing};
+\node[box, right=of prep] (models) {model and\\RMT analysis};
+\draw[arr] (wfdb) -- (labels);
+\draw[arr] (labels) -- (features);
+\draw[arr] (features) -- (split);
+\draw[arr] (split) -- (prep);
+\draw[arr] (prep) -- (models);
+\end{tikzpicture}
+}
+\end{center}
+\begin{block}{Leakage control}
+Imputation, scaling, and one-hot expansion are fit on training records only and then applied to validation/test records through the same pipeline object.
+\end{block}
+\end{frame}
+
+\begin{frame}{Preprocessing and Feature Handling}
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.32\textwidth}
+\begin{block}{Numeric features}
+\small median imputation followed by standard scaling for linear models and covariance analysis
+\end{block}
+\end{column}
+\begin{column}{0.32\textwidth}
+\begin{block}{Categorical metadata}
+\small most-frequent imputation and one-hot encoding with unknown categories ignored at test time
+\end{block}
+\end{column}
+\begin{column}{0.32\textwidth}
+\begin{block}{Feature dimensions}
+\small 523 raw modeling columns become 594 preprocessed columns after encoding
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.25cm}
+\[
+z_i=\phi(\text{waveform}_i,\text{metadata}_i)\in\mathbb{R}^{523},
+\qquad
+x_i=g(z_i)\in\mathbb{R}^{594}.
+\]
+\end{frame}
+
+\begin{frame}{Feature Engineering Choices}
 \begin{center}
 \small
 \begin{tabular}{lp{8.8cm}}
 \toprule
-Model & Role \\
+Feature group & Reason for inclusion \\
 \midrule
-Logistic regression & Regularized linear baseline. \\
-SGD linear & Fast high-dimensional margin model. \\
-Random forest & Bagged nonlinear tree ensemble. \\
-Extra trees & Higher-randomness tree ensemble. \\
-Histogram gradient boosting & Strong CPU boosting baseline. \\
-XGBoost & Regularized boosted trees with GPU support. \\
+Lead amplitude statistics & Capture waveform scale, spread, asymmetry, and robust quantiles. \\
+Derivative and energy features & Represent local morphology and signal roughness without hand-labeled beats. \\
+FFT and band-power features & Add spectral information for rhythm and noise-sensitive structure. \\
+Cross-lead correlations & Encode multi-lead coordination and axis-like relationships. \\
+Metadata & Retain clinically relevant acquisition and demographic context. \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{block}{Design choice}
+The project uses interpretable engineered features instead of a deep ECG network so that preprocessing, feature families, and RMT spectra are directly inspectable.
+\end{block}
+\end{frame}
+
+\begin{frame}{Model Families and Why They Were Chosen}
+\begin{center}
+\small
+\begin{tabular}{lp{8.5cm}}
+\toprule
+Model & Purpose in the comparison \\
+\midrule
+Logistic regression & Regularized linear baseline for high-dimensional tabular features. \\
+SGD linear & Fast linear margin model with tunable \(L_1/L_2\)-style regularization. \\
+Random forest & Bagged nonlinear ensemble with variance reduction. \\
+Extra trees & More randomized tree ensemble to test sensitivity to split randomness. \\
+Histogram gradient boosting & Strong CPU boosting baseline with explicit \(L_2\) regularization. \\
+XGBoost & Regularized boosted trees with \(L_1\), \(L_2\), subsampling, and column sampling. \\
 \bottomrule
 \end{tabular}
 \end{center}
 \end{frame}
 
-\begin{frame}{Final Test Metrics}
+\begin{frame}{Training and Tuning Protocol}
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.49\textwidth}
+\begin{block}{Methodology}
+\begin{itemize}
+\item Train fold is used for fitting and cross-validation.
+\item Optuna TPE search optimizes CV ROC-AUC.
+\item Validation fold checks model-family selection.
+\item Test fold is held out for final reported metrics.
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.47\textwidth}
+\begin{block}{Tuned hyperparameters}
+\begin{itemize}
+\item Linear: \(C\), \(\alpha\), penalty, \(L_1\) ratio.
+\item Forests: trees, depth, leaf size, feature sampling.
+\item Boosting: learning rate, iterations, leaves, \(L_2\).
+\item XGBoost: depth, trees, sampling, \(L_1\), \(L_2\).
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Systematic Hyperparameter Tuning}
+\centering
+\includegraphics[height=0.76\paperheight,keepaspectratio]{presentation_tuning_traces.png}
+\end{frame}
+
+\begin{frame}{Evaluation Metrics}
+\begin{block}{Why multiple metrics?}
+The target is moderately imbalanced, so accuracy alone is not enough. We report ROC-AUC, F1, balanced accuracy, precision, recall, and confusion matrices.
+\end{block}
+\begin{center}
+\small
+\begin{tabular}{lp{8.8cm}}
+\toprule
+Metric & Interpretation \\
+\midrule
+ROC-AUC & Ranking quality across thresholds. \\
+F1 & Precision-recall balance at the operating threshold. \\
+Balanced accuracy & Average of sensitivity and specificity. \\
+Confusion matrix & Error type: missed abnormal records versus false alarms. \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{frame}
+
+\begin{frame}{Final Held-Out Test Metrics}
 \begin{center}
 \scriptsize
 \begin{tabular}{lrrrrrr}
@@ -170,59 +306,84 @@ XGBoost & 0.8151 & 0.8183 & 0.8712 & 0.7978 & 0.8328 & 0.9097 \\
 \bottomrule
 \end{tabular}
 \end{center}
-\begin{block}{Result}
-XGBoost has the highest ROC-AUC; histogram gradient boosting has the highest F1.
+\begin{block}{Main comparison}
+XGBoost obtains the highest test ROC-AUC, while histogram gradient boosting obtains the highest test F1 and balanced accuracy.
 \end{block}
 \end{frame}
 
-\begin{frame}{Model Comparison and RMT Summary}
+\begin{frame}{Evaluation Visualization}
 \centering
-\includegraphics[width=0.96\linewidth]{paper_model_rmt_summary.png}
+\includegraphics[width=0.96\linewidth,height=0.76\paperheight,keepaspectratio]{presentation_model_score_comparison.png}
 \end{frame}
 
-\begin{frame}{Why RMT?}
+\begin{frame}{Confusion Matrices}
+\centering
+\includegraphics[height=0.76\paperheight,keepaspectratio]{presentation_confusion_matrices.png}
+\end{frame}
+
+\begin{frame}{Random Matrix Theory Diagnostic}
 \begin{block}{Marchenko--Pastur reference}
-For standardized white-noise features with aspect ratio \(\gamma=p/n\),
+For standardized white-noise features with aspect ratio \(\gamma=p/n\), sample-covariance eigenvalues concentrate on
 \[
-\lambda_\pm=(1\pm\sqrt{\gamma})^2.
+\lambda_{\pm}=(1\pm\sqrt{\gamma})^2.
 \]
 \end{block}
 \begin{itemize}
-\item Eigenvalues inside the support form the empirical bulk.
-\item Eigenvalues above the upper edge are structured outliers.
-\item The diagnostic checks whether trained models rely on outliers or bulk.
+\item Eigenvalues inside \([\lambda_-,\lambda_+]\) form the empirical bulk.
+\item Eigenvalues above \(\lambda_+\) are structured outliers.
+\item The experiment checks whether model scores survive if the data are projected onto outlier or bulk subspaces.
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Dataset Covariance Spectrum}
+\begin{frame}{Dataset Spectrum}
 \centering
 \includegraphics[height=0.76\paperheight,keepaspectratio]{paper_dataset_spectrum.png}
 \end{frame}
 
-\begin{frame}{RMT Findings}
-\begin{itemize}
-\item \(p/n=0.0348\).
-\item MP support is \([0.662,1.408]\).
-\item 60 components lie above the upper edge.
-\item Outlier components explain 76.9\% of standardized variance.
-\item MP-outlier reconstructions preserve most model discrimination.
-\item MP-bulk reconstructions are weaker but not completely uninformative.
-\end{itemize}
+\begin{frame}{RMT Model Behavior}
+\centering
+\includegraphics[height=0.78\paperheight,keepaspectratio]{paper_model_mp_law_facets.png}
 \end{frame}
 
 \begin{frame}{Filtering Experiment}
 \centering
-\includegraphics[width=0.96\linewidth]{paper_rmt_filtering_experiment.png}
+\includegraphics[width=0.96\linewidth,height=0.76\paperheight,keepaspectratio]{paper_rmt_filtering_experiment.png}
 \end{frame}
 
-\begin{frame}{Main Takeaways}
+\begin{frame}{Interpretation}
+\begin{itemize}
+\item The covariance spectrum has \(p/n=0.0348\), MP support \([0.662,1.408]\), and 60 outlier components.
+\item Those outliers explain 76.9\% of standardized variance, so the feature map has a compact dominant subspace.
+\item MP-outlier reconstructions preserve much of the predictive signal.
+\item MP-bulk reconstructions are weaker but not empty; hard filtering removes weak useful information.
+\item This explains why RMT is useful as model analysis here, but not as a direct accuracy booster.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Takeaways and Likely Questions}
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.52\textwidth}
+\begin{block}{Main takeaways}
 \begin{enumerate}
-\item Raw PTB-XL waveforms can be turned into a reproducible binary ECG screening pipeline.
-\item Boosted trees produce the strongest held-out results in this feature space.
-\item Metadata missingness and cohort age shift are important preprocessing findings.
-\item The covariance spectrum has a small dominant outlier subspace.
-\item RMT explains model behavior better than it improves the classifier here.
+\item Full pipeline from raw ECG decoding to final evaluation.
+\item Explicit handling of missingness, encoding, scaling, and fold separation.
+\item Six model families with systematic tuning.
+\item Boosted trees are strongest for this feature map.
+\item RMT explains high-dimensional model behavior.
 \end{enumerate}
+\end{block}
+\end{column}
+\begin{column}{0.44\textwidth}
+\begin{block}{Questions to be ready for}
+\small
+Why not a deep ECG network?\\
+What does the abnormal label merge?\\
+Why use ROC-AUC and F1 together?\\
+Is the MP bulk pure noise?\\
+Why does filtering not improve XGBoost?
+\end{block}
+\end{column}
+\end{columns}
 \end{frame}
 
 \begin{frame}[plain]
@@ -231,7 +392,7 @@ For standardized white-noise features with aspect ratio \(\gamma=p/n\),
 {\Huge Questions?}
 
 \vspace{0.8cm}
-Raw ECG decoding \(\rightarrow\) feature engineering \(\rightarrow\) model selection \(\rightarrow\) spectral diagnostics.
+Raw ECG decoding \(\rightarrow\) feature engineering \(\rightarrow\) tuned models \(\rightarrow\) evaluation \(\rightarrow\) RMT diagnostics.
 \vfill
 \end{frame}
 

@@ -363,6 +363,89 @@ def model_mp_facets() -> None:
     _save(fig, "paper_model_mp_law_facets.png")
 
 
+def presentation_model_mp_slides() -> None:
+    spectrum = pd.read_csv(_require(RMT / "covariance_spectrum.csv"))
+    diagnostics = pd.read_csv(_require(METRICS / "model_rmt_diagnostics.csv"))
+    diagnostics = diagnostics[diagnostics["split"] == "test"].sort_values("original_roc_auc", ascending=False)
+    eigenvalues = spectrum["eigenvalue"].to_numpy(float)
+    components = spectrum["component"].to_numpy(float)
+    mp_lower = float(spectrum["mp_lower"].iloc[0])
+    mp_upper = float(spectrum["mp_upper"].iloc[0])
+    ratio = float(spectrum["aspect_ratio_p_over_n"].iloc[0])
+    outlier_mask = eigenvalues > mp_upper
+    xs = np.linspace(mp_lower, mp_upper, 400)
+    hist_limit = max(mp_upper * 2.25, float(np.nanpercentile(eigenvalues, 90)))
+    visible = eigenvalues[eigenvalues <= hist_limit]
+
+    for _, row in diagnostics.iterrows():
+        model_name = str(row["model"])
+        display_name = model_name.replace("_", " ")
+        fig, axes = plt.subplots(1, 3, figsize=(10.3, 3.25), gridspec_kw={"width_ratios": [1.35, 1.05, 1.0]})
+        rank_ax, hist_ax, score_ax = axes
+
+        rank_ax.axhspan(mp_lower, mp_upper, color=COLORS["blue"], alpha=0.12, label="MP bulk")
+        rank_ax.scatter(components[~outlier_mask], eigenvalues[~outlier_mask], s=8, color=COLORS["blue"], alpha=0.7, label="bulk")
+        rank_ax.scatter(components[outlier_mask], eigenvalues[outlier_mask], s=11, color=COLORS["red"], alpha=0.9, label="outlier")
+        rank_ax.axhline(mp_upper, color=COLORS["red"], linestyle="--", linewidth=1.0)
+        rank_ax.axhline(mp_lower, color=COLORS["gray"], linestyle=":", linewidth=1.0)
+        rank_ax.set_yscale("log")
+        rank_ax.set_title("Standardized covariance spectrum")
+        rank_ax.set_xlabel("component rank")
+        rank_ax.set_ylabel("eigenvalue")
+        rank_ax.text(
+            0.03,
+            0.08,
+            f"$p/n={ratio:.4f}$\n60 outliers; 76.9% variance",
+            transform=rank_ax.transAxes,
+            fontsize=8,
+            bbox={"facecolor": "white", "alpha": 0.9, "edgecolor": COLORS["light"], "pad": 3},
+        )
+        rank_ax.legend(frameon=False, ncol=3, loc="upper right")
+
+        hist_ax.axvspan(mp_lower, mp_upper, color=COLORS["blue"], alpha=0.12)
+        hist_ax.hist(visible, bins=42, density=True, color=COLORS["blue"], alpha=0.65, label="empirical")
+        hist_ax.plot(xs, marchenko_pastur_pdf(xs, ratio=ratio), color=COLORS["red"], linewidth=1.2, label="MP density")
+        hist_ax.set_xlim(0, hist_limit)
+        hist_ax.set_title("Bulk support window")
+        hist_ax.set_xlabel("eigenvalue")
+        hist_ax.set_ylabel("density")
+        hist_ax.legend(frameon=False)
+
+        scores = pd.Series(
+            {
+                "original": row["original_roc_auc"],
+                "MP outlier": row["signal_subspace_roc_auc"],
+                "MP bulk": row["bulk_subspace_roc_auc"],
+            }
+        )
+        bars = score_ax.barh(scores.index[::-1], scores.values[::-1], color=[COLORS["gold"], COLORS["green"], COLORS["blue"]])
+        score_ax.set_xlim(0.48, 0.95)
+        score_ax.set_title("Model score stress test")
+        score_ax.set_xlabel("test ROC-AUC")
+        for bar in bars:
+            score_ax.text(
+                bar.get_width() + 0.01,
+                bar.get_y() + bar.get_height() / 2,
+                f"{bar.get_width():.3f}",
+                va="center",
+                fontsize=8,
+            )
+        preserved = float(row["signal_subspace_roc_auc"] / row["original_roc_auc"])
+        bulk_drop = float(row["original_roc_auc"] - row["bulk_subspace_roc_auc"])
+        score_ax.text(
+            0.02,
+            0.04,
+            f"Outlier preserves {preserved:.0%} of AUC\nBulk gap: {bulk_drop:.3f}",
+            transform=score_ax.transAxes,
+            fontsize=8,
+            bbox={"facecolor": "white", "alpha": 0.9, "edgecolor": COLORS["light"], "pad": 3},
+        )
+
+        fig.suptitle(f"RMT Model Behavior: {display_name}", y=0.995, fontsize=12)
+        fig.tight_layout(rect=(0, 0, 1, 0.93))
+        _save_presentation(fig, f"presentation_rmt_{model_name}.png")
+
+
 def filtering_experiment() -> None:
     results = pd.read_csv(_require(METRICS / "best_model_rmt_filtering.csv"))
     order = ["original_features", "mp_outlier_scores", "mp_outlier_reconstruction", "pca_plus_plus_scores"]
@@ -534,6 +617,7 @@ def main() -> None:
     dataset_spectrum()
     model_summary()
     model_mp_facets()
+    presentation_model_mp_slides()
     filtering_experiment()
     presentation_evaluation_figures()
 

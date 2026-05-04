@@ -1,0 +1,56 @@
+{
+  "diagnostic_class_counts": {
+    "CD": 4898,
+    "HYP": 2649,
+    "MI": 5469,
+    "NORM": 9514,
+    "STTC": 5235
+  },
+  "labeled_records": 21388,
+  "metadata_records": 21799,
+  "modeling_records": 21388,
+  "n_categorical_features": 4,
+  "n_model_features": 523,
+  "n_numeric_features": 519,
+  "split_counts": {
+    "test": {
+      "diagnostic_abnormality": 1246,
+      "normal": 912
+    },
+    "train": {
+      "diagnostic_abnormality": 9841,
+      "normal": 7243
+    },
+    "validation": {
+      "diagnostic_abnormality": 1232,
+      "normal": 914
+    }
+  },
+  "target_counts": {
+    "diagnostic_abnormality": 12319,
+    "normal": 9069,
+    "unlabeled": 411
+  },
+  "top_feature_missing_fraction": {
+    "corr_AVF_V5": 4.67551898260707e-05,
+    "corr_AVL_V5": 4.67551898260707e-05,
+    "corr_AVR_V5": 4.67551898260707e-05,
+    "corr_III_V5": 4.67551898260707e-05,
+    "corr_II_V5": 4.67551898260707e-05,
+    "corr_I_V5": 4.67551898260707e-05,
+    "height": 0.6765475967832429,
+    "lead_V5_band_baseline_fraction": 4.67551898260707e-05,
+    "lead_V5_band_high_fraction": 4.67551898260707e-05,
+    "lead_V5_band_low_fraction": 4.67551898260707e-05,
+    "lead_V5_band_low_high_ratio": 4.67551898260707e-05,
+    "lead_V5_band_very_high_fraction": 4.67551898260707e-05,
+    "lead_V5_fft_centroid_hz": 4.67551898260707e-05,
+    "lead_V5_fft_dominant_hz": 4.67551898260707e-05,
+    "lead_V5_fft_entropy": 4.67551898260707e-05,
+    "lead_V5_fft_rolloff85_hz": 4.67551898260707e-05,
+    "lead_V5_fft_rolloff95_hz": 4.67551898260707e-05,
+    "nurse": 0.06728071815971573,
+    "site": 0.0007480830372171312,
+    "weight": 0.5620908920890219
+  }
+}

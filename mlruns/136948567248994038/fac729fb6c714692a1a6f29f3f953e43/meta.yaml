@@ -1,0 +1,14 @@
+artifact_uri: file:./mlruns/136948567248994038/fac729fb6c714692a1a6f29f3f953e43/artifacts
+end_time: 1777887751060
+entry_point_name: ''
+experiment_id: '136948567248994038'
+lifecycle_stage: active
+run_id: fac729fb6c714692a1a6f29f3f953e43
+run_name: model_xgboost
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777887751045
+status: 3
+tags: []
+user_id: project

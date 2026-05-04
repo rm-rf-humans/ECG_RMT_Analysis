@@ -1,0 +1,14 @@
+artifact_uri: file:./mlruns/136948567248994038/91c151a0b12243e1b083b092dc333841/artifacts
+end_time: 1777887751140
+entry_point_name: ''
+experiment_id: '136948567248994038'
+lifecycle_stage: active
+run_id: 91c151a0b12243e1b083b092dc333841
+run_name: xgboost_rmt_filtering_experiment
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777887751114
+status: 3
+tags: []
+user_id: project

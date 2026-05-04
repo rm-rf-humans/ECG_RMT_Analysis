@@ -1,0 +1,14 @@
+artifact_uri: file:./mlruns/136948567248994038/16cc87d0c1da4fd2b74ea09218929fd3/artifacts
+end_time: 1777887751075
+entry_point_name: ''
+experiment_id: '136948567248994038'
+lifecycle_stage: active
+run_id: 16cc87d0c1da4fd2b74ea09218929fd3
+run_name: dataset_and_covariance_spectrum
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777887751061
+status: 3
+tags: []
+user_id: project

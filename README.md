@@ -2,7 +2,7 @@
 
 This repository contains an applied machine learning pipeline for PTB-XL ECG records. It starts from WFDB waveform files, `ptbxl_database.csv`, and `scp_statements.csv`, then builds a binary diagnostic target, extracts signal features, trains selected classifiers, and saves evaluation plus high-dimensional spectral-analysis artifacts.
 
-Generated data, metrics, models, and plots are ignored by git. The repository keeps only source code, tests, the final paper PDF, and the presentation PDF.
+Generated data, fitted models, and temporary plots are ignored by git. The repository keeps source code, tests, the final paper PDF, the presentation PDF, and compact MLflow tracking logs exported from the reported Modal run.
 
 ## Dataset
 
@@ -88,6 +88,27 @@ Generated artifacts are written under `outputs/`:
 - `outputs/rmt/covariance_spectrum.csv`
 - `outputs/rmt/covariance_summary.csv`
 - `outputs/models/best_model.joblib`
+
+## MLflow Logs
+
+The checked-in `mlruns/` directory records the reported Modal experiment numbers:
+
+- one run per tuned model with validation/test metrics and selected Optuna parameters
+- one dataset/RMT summary run with class counts and covariance-spectrum statistics
+- one RMT subspace diagnostic run comparing original, MP-outlier, and MP-bulk scores
+- one XGBoost filtering run for the MP and PCA++ retraining experiment
+
+Rebuild the local tracking store from the recovered Modal metric files:
+
+```bash
+python scripts/export_mlflow_logs.py --overwrite
+```
+
+Inspect the runs:
+
+```bash
+mlflow ui --backend-store-uri ./mlruns
+```
 
 ## Modal Compute
 

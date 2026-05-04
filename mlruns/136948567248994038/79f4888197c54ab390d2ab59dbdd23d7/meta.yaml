@@ -1,0 +1,14 @@
+artifact_uri: file:./mlruns/136948567248994038/79f4888197c54ab390d2ab59dbdd23d7/artifacts
+end_time: 1777887751030
+entry_point_name: ''
+experiment_id: '136948567248994038'
+lifecycle_stage: active
+run_id: 79f4888197c54ab390d2ab59dbdd23d7
+run_name: model_extra_trees
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777887751018
+status: 3
+tags: []
+user_id: project

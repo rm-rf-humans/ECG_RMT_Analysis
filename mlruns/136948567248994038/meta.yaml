@@ -1,0 +1,8 @@
+artifact_location: file:./mlruns/136948567248994038
+creation_time: 1777887750944
+experiment_id: '136948567248994038'
+last_update_time: 1777887750944
+lifecycle_stage: active
+name: ptbxl_ecg_rmt_modal_run
+trace_location: null
+workspace: default

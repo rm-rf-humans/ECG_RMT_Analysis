@@ -1,0 +1,14 @@
+artifact_uri: file:./mlruns/136948567248994038/dbeeb6dbfe69482fa0398ff15345a09d/artifacts
+end_time: 1777887751044
+entry_point_name: ''
+experiment_id: '136948567248994038'
+lifecycle_stage: active
+run_id: dbeeb6dbfe69482fa0398ff15345a09d
+run_name: model_hist_gradient_boosting
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777887751031
+status: 3
+tags: []
+user_id: project

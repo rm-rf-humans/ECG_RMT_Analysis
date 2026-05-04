@@ -21,6 +21,7 @@ dependencies = [
 boosting = ["xgboost"]
 tuning = ["optuna"]
 rmt = ["scikit-rmt"]
+tracking = ["mlflow"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -28,4 +29,3 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-

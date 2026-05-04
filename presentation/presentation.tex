@@ -391,9 +391,55 @@ X_{\mathrm{out}}=XP_{\mathrm{out}},\qquad X_{\mathrm{bulk}}=XP_{\mathrm{bulk}}.
 \includegraphics[width=0.98\linewidth,height=0.76\paperheight,keepaspectratio]{presentation_rmt_sgd_linear.png}
 \end{frame}
 
-\begin{frame}{Filtering Experiment}
+\begin{frame}{Filtering Experiment: Visual Result}
 \centering
-\includegraphics[width=0.96\linewidth,height=0.76\paperheight,keepaspectratio]{paper_rmt_filtering_experiment.png}
+\includegraphics[width=0.96\linewidth,height=0.74\paperheight,keepaspectratio]{paper_rmt_filtering_experiment.png}
+
+\small The figure compares the tuned XGBoost family under the original feature matrix and three filtered representations.
+\end{frame}
+
+\begin{frame}{Filtering Experiment: Test Effect}
+\centering
+\footnotesize
+\textbf{Held-out test scores}
+
+\vspace{0.12cm}
+\begin{tabular}{lrrrr}
+\toprule
+Representation & Accuracy & ROC-AUC & F1 & \(\Delta\) AUC \\
+\midrule
+\textbf{Original} & \textbf{0.8151} & \textbf{0.9097} & \textbf{0.8328} & 0.0000 \\
+MP outlier scores & 0.7919 & 0.8839 & 0.8125 & -0.0258 \\
+MP reconstruction & 0.8091 & 0.8957 & 0.8283 & -0.0140 \\
+PCA++ scores & 0.8100 & 0.8938 & 0.8299 & -0.0159 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.28cm}
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.48\textwidth}
+\raggedright
+\textbf{Empirical result}
+
+\footnotesize
+\begin{itemize}
+\item Full features are best on test.
+\item MP reconstruction nearly preserves F1: \(0.8283\) versus \(0.8328\).
+\item AUC is more sensitive: \(-0.0140\) for MP reconstruction and \(-0.0159\) for PCA++.
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\raggedright
+\textbf{Interpretation}
+
+\footnotesize
+\begin{itemize}
+\item Filtering removes bulk components and lowers variance.
+\item The bulk is not pure noise; weak predictive signal remains there.
+\item RMT is most useful here as a diagnostic, not as the final predictor.
+\end{itemize}
+\end{column}
+\end{columns}
 \end{frame}
 
 \begin{frame}{Interpretation}

@@ -2,7 +2,7 @@
 \setbeamertemplate{navigation symbols}{}
 
 \usepackage[english]{babel}
-\usepackage{amsmath,amssymb,booktabs,graphicx}
+\usepackage{amsmath,amssymb,array,booktabs,graphicx}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning}
 
@@ -206,6 +206,57 @@ XGBoost & Regularized boosted trees with \(L_1\), \(L_2\), subsampling, and colu
 \bottomrule
 \end{tabular}
 \end{center}
+\end{frame}
+
+\begin{frame}{Regularization Choices: Linear Models}
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.46\textwidth}
+\begin{block}{Regularized objective}
+\small
+\[
+\min_{\beta,b}
+\frac{1}{n}\sum_i \ell(y_i,\beta^\top x_i+b)
++\lambda_1\|\beta\|_1+\frac{\lambda_2}{2}\|\beta\|_2^2 .
+\]
+\begin{itemize}
+\item \(L_1\): sparsity and feature selection.
+\item \(L_2\): shrinkage for correlated predictors.
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.50\textwidth}
+\begin{block}{Selected by Optuna}
+\small
+\begin{itemize}
+\item Logistic regression: \(L_2\), \(C=0.164\). This applies nontrivial ridge shrinkage to multicollinear ECG feature groups.
+\item SGD linear: \(L_2\), \(\alpha=2.07{\times}10^{-6}\). Elastic-net was searched but not selected.
+\item Interpretation: the linear models kept shrinkage instead of strong sparsity because many weak waveform features can contribute jointly.
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Regularization Choices: Tree Ensembles}
+\small
+\begin{tabular}{@{}p{2.65cm}>{\raggedright\arraybackslash}p{5.0cm}>{\raggedright\arraybackslash}p{5.1cm}@{}}
+\toprule
+Model & Selected control & Regularization role \\
+\midrule
+Random forest &
+400 trees, depth 18, leaf size 2, feature fraction 0.35 &
+Bagging and feature subsampling reduce variance; depth and leaf size limit overly specific splits. \\
+Extra trees &
+200 trees, depth 18, leaf size 3, feature fraction 0.35 &
+Randomized thresholds and a larger leaf size regularize high-dimensional split searches. \\
+Hist. gradient boosting &
+\(L_2=0.028\), 44 leaves, leaf size 48, learning rate 0.0209 &
+\(L_2\) shrinks leaf values; small learning rate and leaf constraints control sequential overfitting. \\
+XGBoost &
+\(\lambda=0.302\), \(\alpha=0.0409\), min child weight 7.77, row/column sampling 0.848/0.881 &
+\(L_2\) shrinks leaf weights, \(L_1\) adds sparsity pressure, and sampling reduces dependence on correlated features. \\
+\bottomrule
+\end{tabular}
 \end{frame}
 
 \begin{frame}{Training and Tuning Protocol}

@@ -1,0 +1,22 @@
+.DS_Store
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# PTB-XL and generated experiment outputs are intentionally not versioned.
+data/
+outputs/
+recovered_modal/
+
+# Local notebook/build artifacts.
+.ipynb_checkpoints/
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg

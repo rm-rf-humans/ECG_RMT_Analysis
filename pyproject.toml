@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ecg-rmt-analysis"
+version = "0.1.0"
+description = "PTB-XL ECG classification with spectral and random-matrix diagnostics"
+requires-python = ">=3.11"
+dependencies = [
+  "joblib",
+  "matplotlib",
+  "numpy",
+  "pandas",
+  "scikit-learn",
+  "scipy",
+  "wfdb",
+]
+
+[project.optional-dependencies]
+boosting = ["xgboost"]
+tuning = ["optuna"]
+rmt = ["scikit-rmt"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
